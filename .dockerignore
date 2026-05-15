@@ -1,0 +1,24 @@
+# Не копировать в образ API (ускоряет сборку и уменьшает контекст)
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.git
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+*.ipynb
+*.csv
+PJME_hourly.csv
+data/
+tests/
+scripts/
+airflow/
+grafana/
+prometheus/
+docs/
+*.log
+models/

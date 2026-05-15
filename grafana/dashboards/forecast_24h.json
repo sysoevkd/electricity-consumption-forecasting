@@ -1,0 +1,143 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "description": "Фактическое потребление из training_data за выбранный период + прогноз на 1 ч (4 × 15 мин) из forecast_cache. Обновляется каждые 15 мин.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}] },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Факт" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.pointSize", "value": 5 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Прогноз LSTM (+15/+30/+45/+60 мин)" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.pointSize", "value": 8 },
+              { "id": "custom.lineStyle", "value": { "dash": [6, 3], "fill": "dash" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["last", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(date), usage_kwh AS \"Факт\" FROM training_data WHERE date >= (SELECT MAX(date) - INTERVAL '5 hours' FROM training_data) ORDER BY date",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(t), v AS \"Прогноз LSTM (+15/+30/+45/+60 мин)\" FROM (SELECT date AS t, usage_kwh AS v FROM training_data WHERE date = (SELECT MAX(date) FROM training_data) UNION ALL SELECT forecast_time AS t, value_kwh AS v FROM forecast_cache WHERE computed_at = (SELECT MAX(computed_at) FROM forecast_cache) AND forecast_time > (SELECT MAX(date) FROM training_data)) sub ORDER BY t",
+          "refId": "B"
+        }
+      ],
+      "title": "Потребление: факт + прогноз на 1 ч",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "h": 5, "w": 12, "x": 0, "y": 12 },
+      "id": 3,
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "Время", "desc": true }] },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "кВт·ч (факт)" }, "properties": [{ "id": "custom.width", "value": 120 }] }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT date AS \"Время\", usage_kwh AS \"кВт·ч (факт)\" FROM training_data WHERE date >= (SELECT MAX(date) - INTERVAL '5 hours' FROM training_data) ORDER BY date DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Фактическое потребление",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "h": 5, "w": 12, "x": 12, "y": 12 },
+      "id": 2,
+      "options": { "showHeader": true },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "кВт·ч (прогноз)" }, "properties": [{ "id": "custom.width", "value": 130 }] }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT forecast_time AS \"Время прогноза\", ROUND(value_kwh::numeric, 4) AS \"кВт·ч (прогноз)\", computed_at AS \"Рассчитано\" FROM forecast_cache WHERE computed_at = (SELECT MAX(computed_at) FROM forecast_cache) ORDER BY forecast_time",
+          "refId": "A"
+        }
+      ],
+      "title": "Прогноз (+15 / +30 / +45 / +60 мин)",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["total-load", "lstm", "forecast"],
+  "templating": { "list": [] },
+  "time": { "from": "2024-11-01T00:00:00Z", "to": "now+1h" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Прогноз потребления LSTM (+15/+30/+45/+60 мин)",
+  "uid": "forecast-24h-lstm",
+  "version": 2,
+  "weekStart": ""
+}

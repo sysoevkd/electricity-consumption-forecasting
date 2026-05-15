@@ -1,0 +1,145 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT NOW() AS \"time\", COUNT(*)::double precision AS value FROM (SELECT DISTINCT ON (event_time) is_anomaly FROM anomaly_events ORDER BY event_time, id DESC) t WHERE is_anomaly = true",
+          "refId": "A"
+        }
+      ],
+      "title": "Аномалий в периоде",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT NOW() AS \"time\", COUNT(*)::double precision AS value FROM (SELECT DISTINCT ON (event_time) is_anomaly FROM anomaly_events ORDER BY event_time, id DESC) t WHERE is_anomaly = false",
+          "refId": "A"
+        }
+      ],
+      "title": "Нормальных в периоде",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT NOW() AS \"time\", CASE WHEN COUNT(*) = 0 THEN 0.0 ELSE 100.0 * SUM(CASE WHEN is_anomaly THEN 1 ELSE 0 END)::double precision / COUNT(*) END AS value FROM (SELECT DISTINCT ON (event_time) is_anomaly FROM anomaly_events ORDER BY event_time, id DESC) t",
+          "refId": "A"
+        }
+      ],
+      "title": "Доля аномалий, %",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(event_time), residual AS value, 'residual' AS metric FROM (SELECT DISTINCT ON (event_time) event_time, residual FROM anomaly_events ORDER BY event_time, id DESC) t UNION ALL SELECT $__time(event_time), residual_threshold AS value, 'threshold' AS metric FROM (SELECT DISTINCT ON (event_time) event_time, residual_threshold FROM anomaly_events ORDER BY event_time, id DESC) t WHERE residual_threshold < 100 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Residual и порог",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 13 },
+      "id": 5,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT ON (event_time) event_time AS \"time\", actual_value, forecast_value, residual, residual_threshold, stat_score, rule_residual, rule_stat, is_anomaly, reason FROM anomaly_events ORDER BY event_time DESC, (reason = 'backtest') DESC LIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "Последние события аномалий",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["total-load", "lstm", "anomaly"],
+  "templating": { "list": [] },
+  "time": { "from": "now-7d", "to": "now+2h" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Аномалии Total Load",
+  "uid": "total-load-anomaly",
+  "version": 1,
+  "weekStart": ""
+}

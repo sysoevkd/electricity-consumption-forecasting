@@ -1,0 +1,223 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "description": "Backtest на последних точках: прогноз (t-1 -> t) и фактическое значение.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "кВт·ч"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["last", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(point_time), forecast_value AS value, 'Прогноз' AS metric FROM (SELECT DISTINCT ON (point_time) point_time, forecast_value FROM backtest_cache WHERE step_num = 1 ORDER BY point_time, computed_at DESC) t ORDER BY point_time",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(point_time), actual_value AS value, 'Факт' AS metric FROM (SELECT DISTINCT ON (point_time) point_time, actual_value FROM backtest_cache WHERE step_num = 1 ORDER BY point_time, computed_at DESC) t ORDER BY point_time",
+          "refId": "B"
+        }
+      ],
+      "title": "Прогноз vs Факт (кВт·ч)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "id": 2,
+      "options": {
+        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(point_time), abs_error AS value FROM (SELECT DISTINCT ON (point_time) point_time, abs_error FROM backtest_cache WHERE step_num = 1 ORDER BY point_time, computed_at DESC) t ORDER BY point_time",
+          "refId": "A"
+        }
+      ],
+      "title": "Абсолютная ошибка |Факт - Прогноз|",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "id": 3,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT point_time AS \"Время точки\", round(forecast_value::numeric,4) AS \"Прогноз, кВт·ч\", round(actual_value::numeric,4) AS \"Факт, кВт·ч\", round(error::numeric,4) AS \"Ошибка\", round(abs_error::numeric,4) AS \"|Ошибка|\" FROM (SELECT DISTINCT ON (point_time) point_time, forecast_value, actual_value, error, abs_error FROM backtest_cache WHERE step_num = 1 ORDER BY point_time, computed_at DESC) t ORDER BY point_time DESC LIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "Таблица сравнения прогноза и факта",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "description": "Committed-прогноз (сохранённый планировщиком заранее) vs фактическое потребление. Это честный продовый цикл: модель не знала будущего в момент прогноза.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisLabel": "кВт·ч",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Факт" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Committed прогноз (+15 мин)" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } },
+              { "id": "custom.lineStyle", "value": { "dash": [6, 3], "fill": "dash" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["last", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(td.date), td.usage_kwh AS \"Факт\" FROM training_data td WHERE td.date >= (SELECT MAX(date) - INTERVAL '5 hours' FROM training_data) ORDER BY td.date",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(fc.forecast_time), fc.value_kwh AS \"Прогноз (+15 мин)\" FROM forecast_cache fc WHERE fc.forecast_time >= (SELECT MAX(date) - INTERVAL '5 hours' FROM training_data) ORDER BY fc.forecast_time",
+          "refId": "B"
+        }
+      ],
+      "title": "Committed Forecast vs Факт (продовый цикл)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "description": "Ошибка committed прогноза: |факт − прогноз|. Только для точек где есть и committed прогноз, и фактическое значение.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 4,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 36 },
+      "id": 5,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__time(fc.forecast_time), ABS(td.usage_kwh - fc.value_kwh) AS \"|Ошибка прогноза|\" FROM forecast_cache fc JOIN training_data td ON td.date = fc.forecast_time WHERE fc.forecast_time >= (SELECT MAX(date) - INTERVAL '5 hours' FROM training_data) ORDER BY fc.forecast_time",
+          "refId": "A"
+        }
+      ],
+      "title": "Ошибка committed прогноза |Факт − Прогноз|",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 43 },
+      "id": 6,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "editorMode": "raw",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT fc.forecast_time AS \"Время\", round(fc.value_kwh::numeric,4) AS \"Прогноз\", round(td.usage_kwh::numeric,4) AS \"Факт\", round(ABS(td.usage_kwh - fc.value_kwh)::numeric,4) AS \"|Ошибка|\", round((ABS(td.usage_kwh - fc.value_kwh) / NULLIF(td.usage_kwh,0) * 100)::numeric,2) AS \"Ошибка, %\", fc.computed_at AS \"Прогноз сделан в\" FROM forecast_cache fc JOIN training_data td ON td.date = fc.forecast_time WHERE fc.forecast_time >= (SELECT MAX(date) - INTERVAL '5 hours' FROM training_data) ORDER BY fc.forecast_time DESC LIMIT 100",
+          "refId": "A"
+        }
+      ],
+      "title": "Таблица: committed прогноз vs факт",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["total-load", "lstm", "forecast", "actual"],
+  "templating": { "list": [] },
+  "time": { "from": "now-7d", "to": "now+2h" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Сравнение прогноза и факта",
+  "uid": "total-load-forecast-vs-actual",
+  "version": 1,
+  "weekStart": ""
+}
